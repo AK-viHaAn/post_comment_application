@@ -1,0 +1,74 @@
+const commentModel = require("../model/commentModel")
+
+const createComment = async function (req,res){
+    try {
+        const data = req.body
+        const {PostId,Name,Comment}=data
+        if(!Name)res.status(400).send({status:false,message:"Pls provide Name"})
+        if(!Comment)res.status(400).send({status:false,message:"Pls provide Comment"})
+        const CreateComment = await commentModel.create(data)
+        res.status(201).send({status:true,message:"Created Successfully",data:CreateComment})
+    } catch (error) {
+        res.status(500).send({status:false,message:error.message})
+    }
+}
+
+const getComment = async function (req,res){
+    try {
+        const GetComment = await commentModel.find({isDeleted:false})
+        res.status(200).send({status:true,message:"Successfull",data:GetComment})
+    } catch (error) {
+        res.status(500).send({status:false,message:error.message})
+    }
+}
+
+const updateComment = async function (req,res){
+    try {
+        const data = req.body
+        const {Comment,_id,Reply,Name}=data
+        let UpdateComment
+
+        if(Reply){
+            let obj = {
+                Name:Name,
+                reply:Reply
+            }
+            UpdateComment = await commentModel.findByIdAndUpdate(_id,{$push:{Reply:obj}},{new:true})
+        }else{
+            UpdateComment = await commentModel.findByIdAndUpdate(_id,{$set:{Comment}},{new:true})
+        }
+
+        res.status(200).send({status:true,message:"Updated Successfully",data:UpdateComment})
+    } catch (error) {
+        res.status(500).send({status:false,message:error.message})
+    }
+}
+
+const deleteComment = async function (req,res){
+    try {
+        const data= req.body
+        let {_id,replyId}=data
+        if(replyId){
+            let totalreply = await commentModel.findById(_id)
+            if(!totalreply)res.status(404).send({status:false,message:"No reply with this id"})
+            let array=totalreply.Reply
+            for(let i=0;i<array.length;i++){
+                if(array[i]._id==replyId){
+                    array[i].status=true
+                }
+            }
+            await commentModel.findByIdAndUpdate(_id,{$set:{Reply:array}},{new:true})
+        }else{
+            await commentModel.findByIdAndUpdate(_id,{$set:{isDeleted:true}},{new:true})
+        }
+        res.status(200).send({status:true,message:"Deleted Successfully"})
+    } catch (error) {
+        res.status(500).send({status:false,message:error.message})
+    }
+}
+
+
+module.exports.createComment=createComment
+module.exports.getComment=getComment
+module.exports.updateComment=updateComment
+module.exports.deleteComment=deleteComment
